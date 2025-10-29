@@ -122,3 +122,102 @@ app = Litestar(
     ]
 )
 ```
+
+### Complete Tenant Creation Example
+
+
+## Complete Tenant Setup Example
+
+Here's a complete example of setting up a new tenant with an organization, client, admin user, and regular user:
+
+```python
+from keycloak_client import KeycloakClient, KeycloakConfig
+
+# 1. Configure admin client
+admin_config = KeycloakConfig(
+    server_url="http://localhost:8080",
+    realm="master",
+    client_id="admin-cli",
+    client_secret="your-admin-secret"
+)
+
+async def setup_tenant(tenant_name: str, tenant_id: str):
+    async with KeycloakClient(admin_config) as admin_client:
+        # 2. Create organization (tenant)
+        print(f"Creating organization for tenant: {tenant_name}")
+        org = await admin_client.create_organization(
+            name=tenant_name,
+            attributes={"tenant_id": [tenant_id]},
+            description=f"Organization for {tenant_name} tenant"
+        )
+        print(f"Created organization: {org['id']}")
+
+        # 3. Create a client for the tenant's backend
+        print("Creating backend client...")
+        client = await admin_client.create_client(
+            client_id=f"{tenant_id}-backend",
+            organization_id=org["id"],
+            redirect_uris=[
+                f"https://{tenant_id}.example.com/*",
+                "http://localhost:8000/*"  # For local development
+            ]
+        )
+        print(f"Created client: {client['clientId']}")
+
+        # 4. Create an admin user for the tenant
+        print("Creating admin user...")
+        admin_user = await admin_client.create_user(
+            username=f"admin-{tenant_id}",
+            email=f"admin@{tenant_id}.example.com",
+            password="ChangeMe123!",  # In production, generate a secure password
+            first_name="Admin",
+            last_name=tenant_name.capitalize(),
+            organization_id=org["id"]
+        )
+
+        # Assign admin role
+        await admin_client.assign_realm_role(
+            user_id=admin_user["id"],
+            role_name="admin"  # Make sure this role exists in your realm
+        )
+        print(f"Created admin user: {admin_user['username']}")
+
+        # 5. Create a regular user
+        print("Creating regular user...")
+        user = await admin_client.create_user(
+            username=f"user-{tenant_id}",
+            email=f"user@{tenant_id}.example.com",
+            password="UserPass123!",
+            first_name="Regular",
+            last_name="User",
+            organization_id=org["id"]
+        )
+
+        # Assign user role
+        await admin_client.assign_realm_role(
+            user_id=user["id"],
+            role_name="user"  # Make sure this role exists in your realm
+        )
+        print(f"Created regular user: {user['username']}")
+
+        return {
+            "organization": org,
+            "client": client,
+            "admin_user": admin_user,
+            "user": user
+        }
+
+# Run the setup
+import asyncio
+
+if __name__ == "__main__":
+    tenant_name = "acme-corp"
+    tenant_id = "acme"  # URL-friendly identifier
+
+    result = asyncio.run(setup_tenant(tenant_name, tenant_id))
+    print("\nTenant setup complete!")
+    print(f"Organization ID: {result['organization']['id']}")
+    print(f"Client ID: {result['client']['clientId']}")
+    print(f"Admin username: {result['admin_user']['username']}")
+    print(f"Regular user: {result['user']['username']}")
+```

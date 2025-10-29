@@ -36,6 +36,7 @@ from src.keycloak_client.keycloak_client import (
 # MOCK RESPONSE HELPER
 # =============================================================================
 
+
 def create_mock_response(status_code: int, json_data=None, headers=None, text=""):
     """
     Create a properly mocked httpx.Response.
@@ -71,6 +72,7 @@ def create_mock_response(status_code: int, json_data=None, headers=None, text=""
 # =============================================================================
 # TEST FIXTURES
 # =============================================================================
+
 
 @pytest.fixture
 def base_config():
@@ -137,9 +139,7 @@ def sample_jwt_payload():
         "iss": "http://localhost:8080/realms/test-realm",
         "aud": "test-client",
         "realm_access": {"roles": ["user", "admin"]},
-        "resource_access": {
-            "test-client": {"roles": ["client-role"]}
-        },
+        "resource_access": {"test-client": {"roles": ["client-role"]}},
         "scope": "openid profile email",
         "organization_id": "org-123",
         "tenant_id": "tenant-123",
@@ -153,9 +153,7 @@ def sample_organization():
         "id": "org-uuid-123",
         "name": "Test Organization",
         "enabled": True,
-        "attributes": {
-            "tenant_id": ["test-tenant"]
-        }
+        "attributes": {"tenant_id": ["test-tenant"]},
     }
 
 
@@ -166,7 +164,7 @@ def sample_client():
         "id": "client-uuid-123",
         "clientId": "test-backend",
         "enabled": True,
-        "secret": "client-secret-123"
+        "secret": "client-secret-123",
     }
 
 
@@ -180,15 +178,14 @@ def sample_user():
         "firstName": "Test",
         "lastName": "User",
         "enabled": True,
-        "attributes": {
-            "organization_id": ["org-123"]
-        }
+        "attributes": {"organization_id": ["org-123"]},
     }
 
 
 # =============================================================================
 # TEST: Configuration
 # =============================================================================
+
 
 class TestKeycloakConfig:
     """Test KeycloakConfig validation and initialization"""
@@ -237,6 +234,7 @@ class TestKeycloakConfig:
 # TEST: Client Initialization
 # =============================================================================
 
+
 class TestKeycloakClientInitialization:
     """Test KeycloakClient initialization and properties"""
 
@@ -275,6 +273,7 @@ class TestKeycloakClientInitialization:
 # TEST: Token Validation
 # =============================================================================
 
+
 class TestTokenValidation:
     """Test token validation functionality"""
 
@@ -290,7 +289,7 @@ class TestTokenValidation:
         keycloak_client._jwks_client = mock_jwks
 
         # Mock jwt.decode
-        with patch('jwt.decode', return_value=sample_jwt_payload):
+        with patch("jwt.decode", return_value=sample_jwt_payload):
             token_info = await keycloak_client.validate_token("fake.jwt.token")
 
             assert token_info.sub == "user-123"
@@ -311,7 +310,7 @@ class TestTokenValidation:
         mock_jwks.get_signing_key_from_jwt.return_value = mock_signing_key
         keycloak_client._jwks_client = mock_jwks
 
-        with patch('jwt.decode', side_effect=jwt.ExpiredSignatureError()):
+        with patch("jwt.decode", side_effect=jwt.ExpiredSignatureError()):
             with pytest.raises(TokenValidationError, match="Token has expired"):
                 await keycloak_client.validate_token("fake.jwt.token")
 
@@ -325,12 +324,14 @@ class TestTokenValidation:
         mock_jwks.get_signing_key_from_jwt.return_value = mock_signing_key
         keycloak_client._jwks_client = mock_jwks
 
-        with patch('jwt.decode', side_effect=jwt.InvalidAudienceError()):
+        with patch("jwt.decode", side_effect=jwt.InvalidAudienceError()):
             with pytest.raises(TokenValidationError, match="Invalid token audience"):
                 await keycloak_client.validate_token("fake.jwt.token")
 
     @pytest.mark.asyncio
-    async def test_validate_token_required_roles(self, keycloak_client, sample_jwt_payload):
+    async def test_validate_token_required_roles(
+        self, keycloak_client, sample_jwt_payload
+    ):
         """Test validation with required roles"""
         mock_signing_key = MagicMock()
         mock_signing_key.key = "test-key"
@@ -339,23 +340,23 @@ class TestTokenValidation:
         mock_jwks.get_signing_key_from_jwt.return_value = mock_signing_key
         keycloak_client._jwks_client = mock_jwks
 
-        with patch('jwt.decode', return_value=sample_jwt_payload):
+        with patch("jwt.decode", return_value=sample_jwt_payload):
             # Should succeed - user has required role
             token_info = await keycloak_client.validate_token(
-                "fake.jwt.token",
-                required_roles=["user"]
+                "fake.jwt.token", required_roles=["user"]
             )
             assert token_info is not None
 
             # Should fail - user missing required role
             with pytest.raises(TokenValidationError, match="Missing required roles"):
                 await keycloak_client.validate_token(
-                    "fake.jwt.token",
-                    required_roles=["superadmin"]
+                    "fake.jwt.token", required_roles=["superadmin"]
                 )
 
     @pytest.mark.asyncio
-    async def test_validate_token_required_scopes(self, keycloak_client, sample_jwt_payload):
+    async def test_validate_token_required_scopes(
+        self, keycloak_client, sample_jwt_payload
+    ):
         """Test validation with required scopes"""
         mock_signing_key = MagicMock()
         mock_signing_key.key = "test-key"
@@ -364,19 +365,17 @@ class TestTokenValidation:
         mock_jwks.get_signing_key_from_jwt.return_value = mock_signing_key
         keycloak_client._jwks_client = mock_jwks
 
-        with patch('jwt.decode', return_value=sample_jwt_payload):
+        with patch("jwt.decode", return_value=sample_jwt_payload):
             # Should succeed
             token_info = await keycloak_client.validate_token(
-                "fake.jwt.token",
-                required_scopes=["openid"]
+                "fake.jwt.token", required_scopes=["openid"]
             )
             assert token_info is not None
 
             # Should fail
             with pytest.raises(TokenValidationError, match="Missing required scopes"):
                 await keycloak_client.validate_token(
-                    "fake.jwt.token",
-                    required_scopes=["admin:write"]
+                    "fake.jwt.token", required_scopes=["admin:write"]
                 )
 
     @pytest.mark.asyncio
@@ -389,18 +388,16 @@ class TestTokenValidation:
         mock_jwks.get_signing_key_from_jwt.return_value = mock_signing_key
         keycloak_client._jwks_client = mock_jwks
 
-        with patch('jwt.decode', return_value=sample_jwt_payload) as mock_decode:
+        with patch("jwt.decode", return_value=sample_jwt_payload) as mock_decode:
             # First validation - should call jwt.decode
             token_info1 = await keycloak_client.validate_token(
-                "fake.jwt.token",
-                cache_tokens=True
+                "fake.jwt.token", cache_tokens=True
             )
             assert mock_decode.call_count == 1
 
             # Second validation - should use cache
             token_info2 = await keycloak_client.validate_token(
-                "fake.jwt.token",
-                cache_tokens=True
+                "fake.jwt.token", cache_tokens=True
             )
             assert mock_decode.call_count == 1  # Not called again
             assert token_info1.sub == token_info2.sub
@@ -415,25 +412,20 @@ class TestTokenValidation:
         mock_jwks.get_signing_key_from_jwt.return_value = mock_signing_key
         keycloak_client._jwks_client = mock_jwks
 
-        with patch('jwt.decode', return_value=sample_jwt_payload) as mock_decode:
+        with patch("jwt.decode", return_value=sample_jwt_payload) as mock_decode:
             # First validation
-            await keycloak_client.validate_token(
-                "fake.jwt.token",
-                cache_tokens=False
-            )
+            await keycloak_client.validate_token("fake.jwt.token", cache_tokens=False)
             assert mock_decode.call_count == 1
 
             # Second validation - should call jwt.decode again
-            await keycloak_client.validate_token(
-                "fake.jwt.token",
-                cache_tokens=False
-            )
+            await keycloak_client.validate_token("fake.jwt.token", cache_tokens=False)
             assert mock_decode.call_count == 2
 
 
 # =============================================================================
 # TEST: Token Introspection
 # =============================================================================
+
 
 class TestTokenIntrospection:
     """Test token introspection endpoint"""
@@ -443,11 +435,7 @@ class TestTokenIntrospection:
         """Test introspection of active token"""
         mock_response = create_mock_response(
             200,
-            json_data={
-                "active": True,
-                "sub": "user-123",
-                "scope": "openid profile"
-            }
+            json_data={"active": True, "sub": "user-123", "scope": "openid profile"},
         )
         mock_http_client.post.return_value = mock_response
 
@@ -471,15 +459,13 @@ class TestTokenIntrospection:
 # TEST: Organization Management
 # =============================================================================
 
+
 class TestOrganizationManagement:
     """Test organization CRUD operations"""
 
     @pytest.mark.asyncio
     async def test_create_organization_success(
-        self,
-        admin_keycloak_client,
-        mock_http_client,
-        sample_organization
+        self, admin_keycloak_client, mock_http_client, sample_organization
     ):
         """Test successful organization creation"""
         # Mock admin token
@@ -489,7 +475,7 @@ class TestOrganizationManagement:
         # Mock POST response
         mock_post_response = create_mock_response(
             201,
-            headers={"Location": "/admin/realms/test-realm/organizations/org-uuid-123"}
+            headers={"Location": "/admin/realms/test-realm/organizations/org-uuid-123"},
         )
 
         # Mock GET response
@@ -498,8 +484,7 @@ class TestOrganizationManagement:
         mock_http_client.request.side_effect = [mock_post_response, mock_get_response]
 
         org = await admin_keycloak_client.create_organization(
-            name="Test Organization",
-            attributes={"tenant_id": ["test-tenant"]}
+            name="Test Organization", attributes={"tenant_id": ["test-tenant"]}
         )
 
         assert org["id"] == "org-uuid-123"
@@ -508,10 +493,7 @@ class TestOrganizationManagement:
 
     @pytest.mark.asyncio
     async def test_create_organization_with_string_attributes(
-        self,
-        admin_keycloak_client,
-        mock_http_client,
-        sample_organization
+        self, admin_keycloak_client, mock_http_client, sample_organization
     ):
         """Test organization creation with string attributes (auto-converted to list)"""
         admin_keycloak_client._admin_token = "admin-token"
@@ -519,7 +501,7 @@ class TestOrganizationManagement:
 
         mock_post_response = create_mock_response(
             201,
-            headers={"Location": "/admin/realms/test-realm/organizations/org-uuid-123"}
+            headers={"Location": "/admin/realms/test-realm/organizations/org-uuid-123"},
         )
 
         mock_get_response = create_mock_response(200, json_data=sample_organization)
@@ -529,17 +511,14 @@ class TestOrganizationManagement:
         # Pass string instead of list
         org = await admin_keycloak_client.create_organization(
             name="Test Organization",
-            attributes={"tenant_id": "test-tenant"}  # String, not list
+            attributes={"tenant_id": "test-tenant"},  # String, not list
         )
 
         assert org["attributes"]["tenant_id"] == ["test-tenant"]
 
     @pytest.mark.asyncio
     async def test_get_organization(
-        self,
-        admin_keycloak_client,
-        mock_http_client,
-        sample_organization
+        self, admin_keycloak_client, mock_http_client, sample_organization
     ):
         """Test getting organization by ID"""
         admin_keycloak_client._admin_token = "admin-token"
@@ -555,10 +534,7 @@ class TestOrganizationManagement:
 
     @pytest.mark.asyncio
     async def test_list_organizations(
-        self,
-        admin_keycloak_client,
-        mock_http_client,
-        sample_organization
+        self, admin_keycloak_client, mock_http_client, sample_organization
     ):
         """Test listing all organizations"""
         admin_keycloak_client._admin_token = "admin-token"
@@ -573,11 +549,7 @@ class TestOrganizationManagement:
         assert orgs[0]["id"] == "org-uuid-123"
 
     @pytest.mark.asyncio
-    async def test_delete_organization(
-        self,
-        admin_keycloak_client,
-        mock_http_client
-    ):
+    async def test_delete_organization(self, admin_keycloak_client, mock_http_client):
         """Test deleting organization"""
         admin_keycloak_client._admin_token = "admin-token"
         admin_keycloak_client._admin_token_expires = time.time() + 3600
@@ -594,15 +566,13 @@ class TestOrganizationManagement:
 # TEST: Client Management
 # =============================================================================
 
+
 class TestClientManagement:
     """Test OAuth2 client management"""
 
     @pytest.mark.asyncio
     async def test_create_client_success(
-        self,
-        admin_keycloak_client,
-        mock_http_client,
-        sample_client
+        self, admin_keycloak_client, mock_http_client, sample_client
     ):
         """Test successful client creation"""
         admin_keycloak_client._admin_token = "admin-token"
@@ -616,20 +586,19 @@ class TestClientManagement:
 
         # Mock get secret response
         mock_secret_response = create_mock_response(
-            200,
-            json_data={"value": "client-secret-123"}
+            200, json_data={"value": "client-secret-123"}
         )
 
         mock_http_client.request.side_effect = [
             mock_post_response,
             mock_list_response,
-            mock_secret_response
+            mock_secret_response,
         ]
 
         client = await admin_keycloak_client.create_client(
             client_id="test-backend",
             organization_id="org-123",
-            redirect_uris=["https://example.com/callback"]
+            redirect_uris=["https://example.com/callback"],
         )
 
         assert client["clientId"] == "test-backend"
@@ -637,10 +606,7 @@ class TestClientManagement:
 
     @pytest.mark.asyncio
     async def test_list_clients(
-        self,
-        admin_keycloak_client,
-        mock_http_client,
-        sample_client
+        self, admin_keycloak_client, mock_http_client, sample_client
     ):
         """Test listing clients"""
         admin_keycloak_client._admin_token = "admin-token"
@@ -655,11 +621,7 @@ class TestClientManagement:
         assert clients[0]["clientId"] == "test-backend"
 
     @pytest.mark.asyncio
-    async def test_get_client_secret(
-        self,
-        admin_keycloak_client,
-        mock_http_client
-    ):
+    async def test_get_client_secret(self, admin_keycloak_client, mock_http_client):
         """Test getting client secret"""
         admin_keycloak_client._admin_token = "admin-token"
         admin_keycloak_client._admin_token_expires = time.time() + 3600
@@ -672,11 +634,7 @@ class TestClientManagement:
         assert secret == "super-secret"
 
     @pytest.mark.asyncio
-    async def test_delete_client(
-        self,
-        admin_keycloak_client,
-        mock_http_client
-    ):
+    async def test_delete_client(self, admin_keycloak_client, mock_http_client):
         """Test deleting client"""
         admin_keycloak_client._admin_token = "admin-token"
         admin_keycloak_client._admin_token_expires = time.time() + 3600
@@ -693,15 +651,13 @@ class TestClientManagement:
 # TEST: User Management
 # =============================================================================
 
+
 class TestUserManagement:
     """Test user CRUD operations"""
 
     @pytest.mark.asyncio
     async def test_create_user_success(
-        self,
-        admin_keycloak_client,
-        mock_http_client,
-        sample_user
+        self, admin_keycloak_client, mock_http_client, sample_user
     ):
         """Test successful user creation"""
         admin_keycloak_client._admin_token = "admin-token"
@@ -709,8 +665,7 @@ class TestUserManagement:
 
         # Mock POST response
         mock_post_response = create_mock_response(
-            201,
-            headers={"Location": "/admin/realms/test-realm/users/user-uuid-123"}
+            201, headers={"Location": "/admin/realms/test-realm/users/user-uuid-123"}
         )
 
         # Mock GET response
@@ -723,7 +678,7 @@ class TestUserManagement:
             email="test@example.com",
             first_name="Test",
             last_name="User",
-            organization_id="org-123"
+            organization_id="org-123",
         )
 
         assert user["id"] == "user-uuid-123"
@@ -731,12 +686,7 @@ class TestUserManagement:
         assert user["attributes"]["organization_id"] == ["org-123"]
 
     @pytest.mark.asyncio
-    async def test_get_user(
-        self,
-        admin_keycloak_client,
-        mock_http_client,
-        sample_user
-    ):
+    async def test_get_user(self, admin_keycloak_client, mock_http_client, sample_user):
         """Test getting user by ID"""
         admin_keycloak_client._admin_token = "admin-token"
         admin_keycloak_client._admin_token_expires = time.time() + 3600
@@ -751,10 +701,7 @@ class TestUserManagement:
 
     @pytest.mark.asyncio
     async def test_list_users(
-        self,
-        admin_keycloak_client,
-        mock_http_client,
-        sample_user
+        self, admin_keycloak_client, mock_http_client, sample_user
     ):
         """Test listing users"""
         admin_keycloak_client._admin_token = "admin-token"
@@ -770,10 +717,7 @@ class TestUserManagement:
 
     @pytest.mark.asyncio
     async def test_list_users_by_organization(
-        self,
-        admin_keycloak_client,
-        mock_http_client,
-        sample_user
+        self, admin_keycloak_client, mock_http_client, sample_user
     ):
         """Test listing users filtered by organization"""
         admin_keycloak_client._admin_token = "admin-token"
@@ -781,8 +725,16 @@ class TestUserManagement:
 
         # Return users with different org IDs
         users_data = [
-            {**sample_user, "id": "user-1", "attributes": {"organization_id": ["org-123"]}},
-            {**sample_user, "id": "user-2", "attributes": {"organization_id": ["org-456"]}},
+            {
+                **sample_user,
+                "id": "user-1",
+                "attributes": {"organization_id": ["org-123"]},
+            },
+            {
+                **sample_user,
+                "id": "user-2",
+                "attributes": {"organization_id": ["org-456"]},
+            },
         ]
 
         mock_response = create_mock_response(200, json_data=users_data)
@@ -794,11 +746,7 @@ class TestUserManagement:
         assert users[0]["id"] == "user-1"
 
     @pytest.mark.asyncio
-    async def test_delete_user(
-        self,
-        admin_keycloak_client,
-        mock_http_client
-    ):
+    async def test_delete_user(self, admin_keycloak_client, mock_http_client):
         """Test deleting user"""
         admin_keycloak_client._admin_token = "admin-token"
         admin_keycloak_client._admin_token_expires = time.time() + 3600
@@ -811,11 +759,7 @@ class TestUserManagement:
         mock_http_client.request.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_set_user_password(
-        self,
-        admin_keycloak_client,
-        mock_http_client
-    ):
+    async def test_set_user_password(self, admin_keycloak_client, mock_http_client):
         """Test setting user password"""
         admin_keycloak_client._admin_token = "admin-token"
         admin_keycloak_client._admin_token_expires = time.time() + 3600
@@ -824,9 +768,7 @@ class TestUserManagement:
         mock_http_client.request.return_value = mock_response
 
         await admin_keycloak_client.set_user_password(
-            "user-uuid-123",
-            "NewPassword123!",
-            temporary=True
+            "user-uuid-123", "NewPassword123!", temporary=True
         )
 
         mock_http_client.request.assert_called_once()
@@ -836,14 +778,13 @@ class TestUserManagement:
 # TEST: Role Management
 # =============================================================================
 
+
 class TestRoleManagement:
     """Test role assignment operations"""
 
     @pytest.mark.asyncio
     async def test_assign_realm_role_to_user(
-        self,
-        admin_keycloak_client,
-        mock_http_client
+        self, admin_keycloak_client, mock_http_client
     ):
         """Test assigning realm role to user"""
         admin_keycloak_client._admin_token = "admin-token"
@@ -851,8 +792,7 @@ class TestRoleManagement:
 
         # Mock get role response
         mock_get_role_response = create_mock_response(
-            200,
-            json_data={"id": "role-uuid-123", "name": "admin"}
+            200, json_data={"id": "role-uuid-123", "name": "admin"}
         )
 
         # Mock assign role response
@@ -860,13 +800,10 @@ class TestRoleManagement:
 
         mock_http_client.request.side_effect = [
             mock_get_role_response,
-            mock_assign_response
+            mock_assign_response,
         ]
 
-        await admin_keycloak_client.assign_realm_role_to_user(
-            "user-uuid-123",
-            "admin"
-        )
+        await admin_keycloak_client.assign_realm_role_to_user("user-uuid-123", "admin")
 
         assert mock_http_client.request.call_count == 2
 
@@ -875,22 +812,17 @@ class TestRoleManagement:
 # TEST: Admin Token Management
 # =============================================================================
 
+
 class TestAdminTokenManagement:
     """Test admin token acquisition and caching"""
 
     @pytest.mark.asyncio
     async def test_get_admin_token_success(
-        self,
-        admin_keycloak_client,
-        mock_http_client
+        self, admin_keycloak_client, mock_http_client
     ):
         """Test successful admin token acquisition"""
         mock_response = create_mock_response(
-            200,
-            json_data={
-                "access_token": "admin-access-token",
-                "expires_in": 3600
-            }
+            200, json_data={"access_token": "admin-access-token", "expires_in": 3600}
         )
         mock_http_client.post.return_value = mock_response
 
@@ -902,9 +834,7 @@ class TestAdminTokenManagement:
 
     @pytest.mark.asyncio
     async def test_get_admin_token_cached(
-        self,
-        admin_keycloak_client,
-        mock_http_client
+        self, admin_keycloak_client, mock_http_client
     ):
         """Test admin token caching"""
         # Set cached token
@@ -917,19 +847,14 @@ class TestAdminTokenManagement:
         mock_http_client.post.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_get_admin_token_no_credentials(
-        self,
-        keycloak_client
-    ):
+    async def test_get_admin_token_no_credentials(self, keycloak_client):
         """Test admin token fails without credentials"""
         with pytest.raises(KeycloakError, match="Admin credentials not configured"):
             await keycloak_client._get_admin_token()
 
     @pytest.mark.asyncio
     async def test_admin_request_with_token(
-        self,
-        admin_keycloak_client,
-        mock_http_client
+        self, admin_keycloak_client, mock_http_client
     ):
         """Test admin request includes bearer token"""
         # Mock admin token
@@ -950,15 +875,12 @@ class TestAdminTokenManagement:
 # TEST: Well-Known Configuration
 # =============================================================================
 
+
 class TestWellKnownConfiguration:
     """Test OpenID Connect discovery"""
 
     @pytest.mark.asyncio
-    async def test_get_wellknown_config(
-        self,
-        keycloak_client,
-        mock_http_client
-    ):
+    async def test_get_wellknown_config(self, keycloak_client, mock_http_client):
         """Test getting well-known configuration"""
         mock_response = create_mock_response(
             200,
@@ -966,8 +888,8 @@ class TestWellKnownConfiguration:
                 "issuer": "http://localhost:8080/realms/test-realm",
                 "authorization_endpoint": "http://localhost:8080/realms/test-realm/protocol/openid-connect/auth",
                 "token_endpoint": "http://localhost:8080/realms/test-realm/protocol/openid-connect/token",
-                "jwks_uri": "http://localhost:8080/realms/test-realm/protocol/openid-connect/certs"
-            }
+                "jwks_uri": "http://localhost:8080/realms/test-realm/protocol/openid-connect/certs",
+            },
         )
         mock_http_client.get.return_value = mock_response
 
@@ -978,24 +900,20 @@ class TestWellKnownConfiguration:
         assert "token_endpoint" in config
 
     @pytest.mark.asyncio
-    async def test_get_auth_url(
-        self,
-        keycloak_client,
-        mock_http_client
-    ):
+    async def test_get_auth_url(self, keycloak_client, mock_http_client):
         """Test generating authorization URL"""
         mock_response = create_mock_response(
             200,
             json_data={
                 "authorization_endpoint": "http://localhost:8080/realms/test-realm/protocol/openid-connect/auth"
-            }
+            },
         )
         mock_http_client.get.return_value = mock_response
 
         auth_url = await keycloak_client.get_auth_url(
             redirect_uri="https://example.com/callback",
             state="random-state",
-            scope="openid profile email"
+            scope="openid profile email",
         )
 
         assert "client_id=test-client" in auth_url
@@ -1004,25 +922,20 @@ class TestWellKnownConfiguration:
         assert "scope=openid profile email" in auth_url
 
     @pytest.mark.asyncio
-    async def test_exchange_code_for_token(
-        self,
-        keycloak_client,
-        mock_http_client
-    ):
+    async def test_exchange_code_for_token(self, keycloak_client, mock_http_client):
         """Test exchanging authorization code for token"""
         mock_response = create_mock_response(
             200,
             json_data={
                 "access_token": "access-token-123",
                 "refresh_token": "refresh-token-123",
-                "expires_in": 3600
-            }
+                "expires_in": 3600,
+            },
         )
         mock_http_client.post.return_value = mock_response
 
         tokens = await keycloak_client.exchange_code_for_token(
-            code="auth-code-123",
-            redirect_uri="https://example.com/callback"
+            code="auth-code-123", redirect_uri="https://example.com/callback"
         )
 
         assert tokens["access_token"] == "access-token-123"
@@ -1034,14 +947,13 @@ class TestWellKnownConfiguration:
 # TEST: Error Handling
 # =============================================================================
 
+
 class TestErrorHandling:
     """Test error handling and exception cases"""
 
     @pytest.mark.asyncio
     async def test_keycloak_error_on_http_error(
-        self,
-        admin_keycloak_client,
-        mock_http_client
+        self, admin_keycloak_client, mock_http_client
     ):
         """Test KeycloakError raised on HTTP errors"""
         admin_keycloak_client._admin_token = "admin-token"
@@ -1054,10 +966,7 @@ class TestErrorHandling:
             await admin_keycloak_client.get_organization("org-123")
 
     @pytest.mark.asyncio
-    async def test_token_validation_error_on_invalid_token(
-        self,
-        keycloak_client
-    ):
+    async def test_token_validation_error_on_invalid_token(self, keycloak_client):
         """Test TokenValidationError on invalid token"""
         mock_signing_key = MagicMock()
         mock_signing_key.key = "test-key"
@@ -1066,15 +975,13 @@ class TestErrorHandling:
         mock_jwks.get_signing_key_from_jwt.return_value = mock_signing_key
         keycloak_client._jwks_client = mock_jwks
 
-        with patch('jwt.decode', side_effect=jwt.InvalidTokenError("Invalid")):
+        with patch("jwt.decode", side_effect=jwt.InvalidTokenError("Invalid")):
             with pytest.raises(TokenValidationError, match="Invalid token"):
                 await keycloak_client.validate_token("bad.token")
 
     @pytest.mark.asyncio
     async def test_create_organization_error_on_duplicate(
-        self,
-        admin_keycloak_client,
-        mock_http_client
+        self, admin_keycloak_client, mock_http_client
     ):
         """Test error when creating duplicate organization"""
         admin_keycloak_client._admin_token = "admin-token"
@@ -1085,14 +992,14 @@ class TestErrorHandling:
 
         with pytest.raises(KeycloakError, match="Failed to create organization"):
             await admin_keycloak_client.create_organization(
-                name="Duplicate Org",
-                attributes={"tenant_id": ["duplicate"]}
+                name="Duplicate Org", attributes={"tenant_id": ["duplicate"]}
             )
 
 
 # =============================================================================
 # TEST: Integration - Tenant Infrastructure
 # =============================================================================
+
 
 class TestTenantInfrastructure:
     """Test complete tenant setup"""
@@ -1103,7 +1010,7 @@ class TestTenantInfrastructure:
         admin_keycloak_client,
         mock_http_client,
         sample_organization,
-        sample_client
+        sample_client,
     ):
         """Test complete tenant infrastructure creation"""
         admin_keycloak_client._admin_token = "admin-token"
@@ -1112,7 +1019,7 @@ class TestTenantInfrastructure:
         # Mock organization creation
         mock_org_post = create_mock_response(
             201,
-            headers={"Location": "/admin/realms/test-realm/organizations/org-uuid-123"}
+            headers={"Location": "/admin/realms/test-realm/organizations/org-uuid-123"},
         )
 
         mock_org_get = create_mock_response(200, json_data=sample_organization)
@@ -1123,8 +1030,7 @@ class TestTenantInfrastructure:
         mock_client_list = create_mock_response(200, json_data=[sample_client])
 
         mock_client_secret = create_mock_response(
-            200,
-            json_data={"value": "client-secret-123"}
+            200, json_data={"value": "client-secret-123"}
         )
 
         mock_http_client.request.side_effect = [
@@ -1132,14 +1038,14 @@ class TestTenantInfrastructure:
             mock_org_get,
             mock_client_post,
             mock_client_list,
-            mock_client_secret
+            mock_client_secret,
         ]
 
         result = await create_tenant_infrastructure(
             admin_client=admin_keycloak_client,
             tenant_name="Test Tenant",
             tenant_id="test-tenant",
-            backend_redirect_uris=["https://test-tenant.example.com/callback"]
+            backend_redirect_uris=["https://test-tenant.example.com/callback"],
         )
 
         assert result["organization"]["id"] == "org-uuid-123"
@@ -1150,6 +1056,7 @@ class TestTenantInfrastructure:
 # =============================================================================
 # TEST: Utility Functions
 # =============================================================================
+
 
 class TestUtilityFunctions:
     """Test utility functions"""
@@ -1172,15 +1079,12 @@ class TestUtilityFunctions:
 # TEST: Performance and Caching
 # =============================================================================
 
+
 class TestPerformanceAndCaching:
     """Test caching and performance optimizations"""
 
     @pytest.mark.asyncio
-    async def test_token_cache_hit_rate(
-        self,
-        keycloak_client,
-        sample_jwt_payload
-    ):
+    async def test_token_cache_hit_rate(self, keycloak_client, sample_jwt_payload):
         """Test token validation cache performance"""
         mock_signing_key = MagicMock()
         mock_signing_key.key = "test-key"
@@ -1189,31 +1093,22 @@ class TestPerformanceAndCaching:
         mock_jwks.get_signing_key_from_jwt.return_value = mock_signing_key
         keycloak_client._jwks_client = mock_jwks
 
-        with patch('jwt.decode', return_value=sample_jwt_payload) as mock_decode:
+        with patch("jwt.decode", return_value=sample_jwt_payload) as mock_decode:
             # Validate same token multiple times
             for _ in range(10):
                 await keycloak_client.validate_token(
-                    "same.token.always",
-                    cache_tokens=True
+                    "same.token.always", cache_tokens=True
                 )
 
             # Should only decode once
             assert mock_decode.call_count == 1
 
     @pytest.mark.asyncio
-    async def test_admin_token_reuse(
-        self,
-        admin_keycloak_client,
-        mock_http_client
-    ):
+    async def test_admin_token_reuse(self, admin_keycloak_client, mock_http_client):
         """Test admin token is reused across operations"""
         # Mock token endpoint
         mock_token_response = create_mock_response(
-            200,
-            json_data={
-                "access_token": "admin-token",
-                "expires_in": 3600
-            }
+            200, json_data={"access_token": "admin-token", "expires_in": 3600}
         )
         mock_http_client.post.return_value = mock_token_response
 
@@ -1230,10 +1125,7 @@ class TestPerformanceAndCaching:
         mock_http_client.post.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_connection_reuse_in_context_manager(
-        self,
-        base_config
-    ):
+    async def test_connection_reuse_in_context_manager(self, base_config):
         """Test HTTP connection pooling in context manager"""
         async with KeycloakClient(base_config) as kc:
             http_client_1 = kc._http_client
@@ -1247,14 +1139,13 @@ class TestPerformanceAndCaching:
 # TEST: Edge Cases
 # =============================================================================
 
+
 class TestEdgeCases:
     """Test edge cases and boundary conditions"""
 
     @pytest.mark.asyncio
     async def test_validate_token_with_empty_roles(
-        self,
-        keycloak_client,
-        sample_jwt_payload
+        self, keycloak_client, sample_jwt_payload
     ):
         """Test token validation with no roles"""
         payload_no_roles = {**sample_jwt_payload}
@@ -1268,15 +1159,13 @@ class TestEdgeCases:
         mock_jwks.get_signing_key_from_jwt.return_value = mock_signing_key
         keycloak_client._jwks_client = mock_jwks
 
-        with patch('jwt.decode', return_value=payload_no_roles):
+        with patch("jwt.decode", return_value=payload_no_roles):
             token_info = await keycloak_client.validate_token("token")
             assert token_info.roles == []
 
     @pytest.mark.asyncio
     async def test_validate_token_with_no_organization(
-        self,
-        keycloak_client,
-        sample_jwt_payload
+        self, keycloak_client, sample_jwt_payload
     ):
         """Test token validation without organization claim"""
         payload_no_org = {**sample_jwt_payload}
@@ -1290,16 +1179,14 @@ class TestEdgeCases:
         mock_jwks.get_signing_key_from_jwt.return_value = mock_signing_key
         keycloak_client._jwks_client = mock_jwks
 
-        with patch('jwt.decode', return_value=payload_no_org):
+        with patch("jwt.decode", return_value=payload_no_org):
             token_info = await keycloak_client.validate_token("token")
             assert token_info.organization_id is None
             assert token_info.tenant_id is None
 
     @pytest.mark.asyncio
     async def test_create_organization_with_empty_attributes(
-        self,
-        admin_keycloak_client,
-        mock_http_client
+        self, admin_keycloak_client, mock_http_client
     ):
         """Test creating organization with no attributes"""
         admin_keycloak_client._admin_token = "admin-token"
@@ -1307,7 +1194,7 @@ class TestEdgeCases:
 
         mock_post_response = create_mock_response(
             201,
-            headers={"Location": "/admin/realms/test-realm/organizations/org-uuid-123"}
+            headers={"Location": "/admin/realms/test-realm/organizations/org-uuid-123"},
         )
 
         mock_get_response = create_mock_response(
@@ -1316,15 +1203,14 @@ class TestEdgeCases:
                 "id": "org-uuid-123",
                 "name": "Test Org",
                 "enabled": True,
-                "attributes": {}
-            }
+                "attributes": {},
+            },
         )
 
         mock_http_client.request.side_effect = [mock_post_response, mock_get_response]
 
         org = await admin_keycloak_client.create_organization(
-            name="Test Org",
-            attributes=None
+            name="Test Org", attributes=None
         )
 
         assert org["id"] == "org-uuid-123"
@@ -1332,9 +1218,7 @@ class TestEdgeCases:
 
     @pytest.mark.asyncio
     async def test_list_users_empty_result(
-        self,
-        admin_keycloak_client,
-        mock_http_client
+        self, admin_keycloak_client, mock_http_client
     ):
         """Test listing users with no results"""
         admin_keycloak_client._admin_token = "admin-token"
@@ -1360,7 +1244,7 @@ class TestEdgeCases:
             exp=int(time.time()) + 3600,
             iat=int(time.time()),
             raw_token="raw.jwt.token",
-            claims={"custom": "claim"}
+            claims={"custom": "claim"},
         )
 
         assert token_info.sub == "user-123"
@@ -1373,14 +1257,16 @@ class TestEdgeCases:
 # TEST: Token Parsing
 # =============================================================================
 
+
 class TestTokenParsing:
     """Test JWT token parsing logic"""
 
-    def test_parse_token_payload_with_all_fields(self, keycloak_client, sample_jwt_payload):
+    def test_parse_token_payload_with_all_fields(
+        self, keycloak_client, sample_jwt_payload
+    ):
         """Test parsing token with all fields present"""
         token_info = keycloak_client._parse_token_payload(
-            sample_jwt_payload,
-            "raw.jwt.token"
+            sample_jwt_payload, "raw.jwt.token"
         )
 
         assert token_info.sub == "user-123"
@@ -1402,8 +1288,7 @@ class TestTokenParsing:
         }
 
         token_info = keycloak_client._parse_token_payload(
-            minimal_payload,
-            "raw.jwt.token"
+            minimal_payload, "raw.jwt.token"
         )
 
         assert token_info.sub == "user-123"
@@ -1419,7 +1304,7 @@ class TestTokenParsing:
             "sub": "user-123",
             "exp": int(time.time()) + 3600,
             "iat": int(time.time()),
-            "realm_access": {"roles": ["realm-role-1", "realm-role-2"]}
+            "realm_access": {"roles": ["realm-role-1", "realm-role-2"]},
         }
 
         token_info = keycloak_client._parse_token_payload(payload, "token")
@@ -1435,7 +1320,7 @@ class TestTokenParsing:
             "iat": int(time.time()),
             "resource_access": {
                 "test-client": {"roles": ["client-role-1", "client-role-2"]}
-            }
+            },
         }
 
         token_info = keycloak_client._parse_token_payload(payload, "token")
@@ -1447,6 +1332,7 @@ class TestTokenParsing:
 # =============================================================================
 # TEST: Requirements Verification
 # =============================================================================
+
 
 class TestRequirementsVerification:
     """Test role and scope requirement verification"""
@@ -1464,14 +1350,12 @@ class TestRequirementsVerification:
             exp=int(time.time()) + 3600,
             iat=int(time.time()),
             raw_token="token",
-            claims={}
+            claims={},
         )
 
         # Should not raise
         keycloak_client._verify_requirements(
-            token_info,
-            required_roles=["user", "admin"],
-            required_scopes=None
+            token_info, required_roles=["user", "admin"], required_scopes=None
         )
 
     def test_verify_requirements_missing_roles(self, keycloak_client):
@@ -1487,14 +1371,12 @@ class TestRequirementsVerification:
             exp=int(time.time()) + 3600,
             iat=int(time.time()),
             raw_token="token",
-            claims={}
+            claims={},
         )
 
         with pytest.raises(TokenValidationError, match="Missing required roles: admin"):
             keycloak_client._verify_requirements(
-                token_info,
-                required_roles=["user", "admin"],
-                required_scopes=None
+                token_info, required_roles=["user", "admin"], required_scopes=None
             )
 
     def test_verify_requirements_all_scopes_present(self, keycloak_client):
@@ -1510,14 +1392,12 @@ class TestRequirementsVerification:
             exp=int(time.time()) + 3600,
             iat=int(time.time()),
             raw_token="token",
-            claims={}
+            claims={},
         )
 
         # Should not raise
         keycloak_client._verify_requirements(
-            token_info,
-            required_roles=None,
-            required_scopes=["openid", "profile"]
+            token_info, required_roles=None, required_scopes=["openid", "profile"]
         )
 
     def test_verify_requirements_missing_scopes(self, keycloak_client):
@@ -1533,20 +1413,21 @@ class TestRequirementsVerification:
             exp=int(time.time()) + 3600,
             iat=int(time.time()),
             raw_token="token",
-            claims={}
+            claims={},
         )
 
         with pytest.raises(TokenValidationError, match="Missing required scopes"):
             keycloak_client._verify_requirements(
                 token_info,
                 required_roles=None,
-                required_scopes=["openid", "profile", "email"]
+                required_scopes=["openid", "profile", "email"],
             )
 
 
 # =============================================================================
 # TEST: Context Manager Behavior
 # =============================================================================
+
 
 class TestContextManagerBehavior:
     """Test async context manager lifecycle"""
@@ -1575,6 +1456,7 @@ class TestContextManagerBehavior:
 # =============================================================================
 # TEST: URL Construction
 # =============================================================================
+
 
 class TestURLConstruction:
     """Test URL construction for various endpoints"""

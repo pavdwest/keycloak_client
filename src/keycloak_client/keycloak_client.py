@@ -17,6 +17,7 @@ from functools import lru_cache
 @dataclass
 class KeycloakConfig:
     """Configuration for Keycloak connection"""
+
     server_url: str  # e.g., "https://keycloak.example.com"
     realm: str  # e.g., "multi-tenant-realm"
     client_id: str  # Client ID for this backend instance
@@ -30,6 +31,7 @@ class KeycloakConfig:
 @dataclass
 class TokenInfo:
     """Decoded token information"""
+
     sub: str  # Subject (user ID)
     email: Optional[str]
     username: Optional[str]
@@ -45,11 +47,13 @@ class TokenInfo:
 
 class KeycloakError(Exception):
     """Base exception for Keycloak operations"""
+
     pass
 
 
 class TokenValidationError(KeycloakError):
     """Token validation failed"""
+
     pass
 
 
@@ -130,7 +134,7 @@ class KeycloakClient:
         token: str,
         required_roles: Optional[List[str]] = None,
         required_scopes: Optional[List[str]] = None,
-        cache_tokens: bool = True
+        cache_tokens: bool = True,
     ) -> TokenInfo:
         """
         Validate a JWT bearer token from Authorization header.
@@ -171,7 +175,7 @@ class KeycloakClient:
                     "verify_exp": True,
                     "verify_aud": True,
                     "verify_iss": True,
-                }
+                },
             )
 
             # Extract token information
@@ -197,14 +201,21 @@ class KeycloakClient:
         except Exception as e:
             raise TokenValidationError(f"Token validation failed: {str(e)}")
 
-    def _parse_token_payload(self, payload: Dict[str, Any], raw_token: str) -> TokenInfo:
+    def _parse_token_payload(
+        self, payload: Dict[str, Any], raw_token: str
+    ) -> TokenInfo:
         """Parse JWT payload into TokenInfo"""
         # Extract roles from realm_access and resource_access
         roles = []
         if "realm_access" in payload:
             roles.extend(payload["realm_access"].get("roles", []))
-        if "resource_access" in payload and self.config.client_id in payload["resource_access"]:
-            roles.extend(payload["resource_access"][self.config.client_id].get("roles", []))
+        if (
+            "resource_access" in payload
+            and self.config.client_id in payload["resource_access"]
+        ):
+            roles.extend(
+                payload["resource_access"][self.config.client_id].get("roles", [])
+            )
 
         # Extract scopes
         scopes = payload.get("scope", "").split() if "scope" in payload else []
@@ -224,14 +235,14 @@ class KeycloakClient:
             exp=payload["exp"],
             iat=payload["iat"],
             raw_token=raw_token,
-            claims=payload
+            claims=payload,
         )
 
     def _verify_requirements(
         self,
         token_info: TokenInfo,
         required_roles: Optional[List[str]],
-        required_scopes: Optional[List[str]]
+        required_scopes: Optional[List[str]],
     ):
         """Verify token meets role and scope requirements"""
         if required_roles:
@@ -267,7 +278,7 @@ class KeycloakClient:
                 "token": token,
                 "client_id": self.config.client_id,
                 "client_secret": self.config.client_secret,
-            }
+            },
         )
 
         if response.status_code != 200:
@@ -299,7 +310,7 @@ class KeycloakClient:
                 "grant_type": "client_credentials",
                 "client_id": self.config.admin_client_id,
                 "client_secret": self.config.admin_client_secret,
-            }
+            },
         )
 
         if response.status_code != 200:
@@ -311,12 +322,7 @@ class KeycloakClient:
 
         return self._admin_token
 
-    async def _admin_request(
-        self,
-        method: str,
-        path: str,
-        **kwargs
-    ) -> httpx.Response:
+    async def _admin_request(self, method: str, path: str, **kwargs) -> httpx.Response:
         """Make an authenticated admin API request"""
         token = await self._get_admin_token()
         headers = kwargs.pop("headers", {})
@@ -336,7 +342,7 @@ class KeycloakClient:
         name: str,
         attributes: Optional[Dict[str, Any]] = None,
         domains: Optional[List[str]] = None,
-        description: Optional[str] = None
+        description: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Create a new organization (tenant).
@@ -362,7 +368,9 @@ class KeycloakClient:
             payload["description"] = description
 
         if domains:
-            payload["domains"] = [{"name": domain, "verified": False} for domain in domains]
+            payload["domains"] = [
+                {"name": domain, "verified": False} for domain in domains
+            ]
 
         # Attributes must be in the format: key -> list of strings
         if attributes:
@@ -375,11 +383,7 @@ class KeycloakClient:
                     formatted_attrs[key] = [str(value)]
             payload["attributes"] = formatted_attrs
 
-        response = await self._admin_request(
-            "POST",
-            "/organizations",
-            json=payload
-        )
+        response = await self._admin_request("POST", "/organizations", json=payload)
 
         if response.status_code not in (201, 200):
             raise KeycloakError(f"Failed to create organization: {response.text}")
@@ -431,7 +435,7 @@ class KeycloakClient:
         client_id: str,
         organization_id: Optional[str] = None,
         redirect_uris: Optional[List[str]] = None,
-        web_origins: Optional[List[str]] = None
+        web_origins: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """
         Create a new OAuth2/OIDC client for a tenant backend.
@@ -457,17 +461,13 @@ class KeycloakClient:
             "directAccessGrantsEnabled": True,
             "redirectUris": redirect_uris or ["*"],
             "webOrigins": web_origins or ["*"],
-            "attributes": {}
+            "attributes": {},
         }
 
         if organization_id:
             payload["attributes"]["organization_id"] = organization_id
 
-        response = await self._admin_request(
-            "POST",
-            "/clients",
-            json=payload
-        )
+        response = await self._admin_request("POST", "/clients", json=payload)
 
         if response.status_code not in (201, 200):
             raise KeycloakError(f"Failed to create client: {response.text}")
@@ -483,7 +483,9 @@ class KeycloakClient:
 
         return client
 
-    async def list_clients(self, client_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    async def list_clients(
+        self, client_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         """List clients"""
         params = {}
         if client_id:
@@ -499,8 +501,7 @@ class KeycloakClient:
     async def get_client_secret(self, client_uuid: str) -> str:
         """Get client secret"""
         response = await self._admin_request(
-            "GET",
-            f"/clients/{client_uuid}/client-secret"
+            "GET", f"/clients/{client_uuid}/client-secret"
         )
 
         if response.status_code != 200:
@@ -527,7 +528,7 @@ class KeycloakClient:
         last_name: str,
         organization_id: Optional[str] = None,
         enabled: bool = True,
-        email_verified: bool = False
+        email_verified: bool = False,
     ) -> Dict[str, Any]:
         """Create a new user"""
         payload = {
@@ -542,15 +543,9 @@ class KeycloakClient:
         # Add attributes if organization_id provided
         # Attributes must be key -> list of strings format
         if organization_id:
-            payload["attributes"] = {
-                "organization_id": [organization_id]
-            }
+            payload["attributes"] = {"organization_id": [organization_id]}
 
-        response = await self._admin_request(
-            "POST",
-            "/users",
-            json=payload
-        )
+        response = await self._admin_request("POST", "/users", json=payload)
 
         if response.status_code not in (201, 200):
             raise KeycloakError(f"Failed to create user: {response.text}")
@@ -568,9 +563,7 @@ class KeycloakClient:
         return response.json()
 
     async def list_users(
-        self,
-        organization_id: Optional[str] = None,
-        search: Optional[str] = None
+        self, organization_id: Optional[str] = None, search: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """List users"""
         params = {}
@@ -587,7 +580,8 @@ class KeycloakClient:
         # Filter by organization if specified
         if organization_id:
             users = [
-                u for u in users
+                u
+                for u in users
                 if organization_id in u.get("attributes", {}).get("organization_id", [])
             ]
 
@@ -601,22 +595,13 @@ class KeycloakClient:
             raise KeycloakError(f"Failed to delete user: {response.text}")
 
     async def set_user_password(
-        self,
-        user_id: str,
-        password: str,
-        temporary: bool = False
+        self, user_id: str, password: str, temporary: bool = False
     ):
         """Set user password"""
-        payload = {
-            "type": "password",
-            "value": password,
-            "temporary": temporary
-        }
+        payload = {"type": "password", "value": password, "temporary": temporary}
 
         response = await self._admin_request(
-            "PUT",
-            f"/users/{user_id}/reset-password",
-            json=payload
+            "PUT", f"/users/{user_id}/reset-password", json=payload
         )
 
         if response.status_code != 204:
@@ -632,9 +617,7 @@ class KeycloakClient:
         role = await self._get_realm_role(role_name)
 
         response = await self._admin_request(
-            "POST",
-            f"/users/{user_id}/role-mappings/realm",
-            json=[role]
+            "POST", f"/users/{user_id}/role-mappings/realm", json=[role]
         )
 
         if response.status_code not in (204, 200):
@@ -667,7 +650,7 @@ class KeycloakClient:
         self,
         redirect_uri: str,
         state: Optional[str] = None,
-        scope: str = "openid profile email"
+        scope: str = "openid profile email",
     ) -> str:
         """Generate authorization URL for OAuth2 flow"""
         config = await self.get_wellknown_config()
@@ -687,9 +670,7 @@ class KeycloakClient:
         return f"{auth_endpoint}?{query_string}"
 
     async def exchange_code_for_token(
-        self,
-        code: str,
-        redirect_uri: str
+        self, code: str, redirect_uri: str
     ) -> Dict[str, Any]:
         """Exchange authorization code for access token"""
         url = f"{self.base_url}/protocol/openid-connect/token"
@@ -702,7 +683,7 @@ class KeycloakClient:
                 "redirect_uri": redirect_uri,
                 "client_id": self.config.client_id,
                 "client_secret": self.config.client_secret,
-            }
+            },
         )
 
         if response.status_code != 200:
@@ -714,6 +695,7 @@ class KeycloakClient:
 # =============================================================================
 # LITESTAR INTEGRATION
 # =============================================================================
+
 
 class KeycloakAuthMiddleware:
     """
@@ -755,7 +737,7 @@ class KeycloakAuthMiddleware:
         config: KeycloakConfig,
         excluded_paths: Optional[List[str]] = None,
         required_roles: Optional[List[str]] = None,
-        required_scopes: Optional[List[str]] = None
+        required_scopes: Optional[List[str]] = None,
     ):
         self.app = app
         self.client = KeycloakClient(config)
@@ -780,7 +762,9 @@ class KeycloakAuthMiddleware:
         auth_header = headers.get(b"authorization", b"").decode()
 
         if not auth_header.startswith("Bearer "):
-            await self._send_unauthorized(send, "Missing or invalid Authorization header")
+            await self._send_unauthorized(
+                send, "Missing or invalid Authorization header"
+            )
             return
 
         token = auth_header[7:]  # Remove "Bearer " prefix
@@ -790,7 +774,7 @@ class KeycloakAuthMiddleware:
             token_info = await self.client.validate_token(
                 token,
                 required_roles=self.required_roles,
-                required_scopes=self.required_scopes
+                required_scopes=self.required_scopes,
             )
 
             # Store token info in request state
@@ -804,47 +788,53 @@ class KeycloakAuthMiddleware:
 
     async def _send_unauthorized(self, send, message: str):
         """Send 401 Unauthorized response"""
-        await send({
-            "type": "http.response.start",
-            "status": 401,
-            "headers": [[b"content-type", b"application/json"]],
-        })
-        await send({
-            "type": "http.response.body",
-            "body": f'{{"detail": "{message}"}}'.encode(),
-        })
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 401,
+                "headers": [[b"content-type", b"application/json"]],
+            }
+        )
+        await send(
+            {
+                "type": "http.response.body",
+                "body": f'{{"detail": "{message}"}}'.encode(),
+            }
+        )
 
 
 # =============================================================================
 # UTILITY FUNCTIONS
 # =============================================================================
 
+
 def extract_token_from_header(authorization: str) -> str:
     """Extract bearer token from Authorization header.
-    
+
     Args:
         authorization: The Authorization header value (e.g., 'Bearer token123')
-        
+
     Returns:
         The extracted token
-        
+
     Raises:
         ValueError: If the authorization header is invalid
     """
     if not authorization or not isinstance(authorization, str):
         raise ValueError("Invalid Authorization header format")
-        
+
     parts = authorization.split()
     if len(parts) != 2 or parts[0].lower() != "bearer":
         raise ValueError("Invalid Authorization header format")
-        
+
     return parts[1]
+
 
 async def create_tenant_infrastructure(
     admin_client: KeycloakClient,
     tenant_name: str,
     tenant_id: str,
-    backend_redirect_uris: List[str]
+    backend_redirect_uris: List[str],
 ) -> Dict[str, Any]:
     """
     Complete setup for a new tenant: organization + client.
@@ -854,19 +844,19 @@ async def create_tenant_infrastructure(
     # Create organization - attributes values must be lists
     org = await admin_client.create_organization(
         name=tenant_name,
-        attributes={"tenant_id": [tenant_id]}  # Must be a list!
+        attributes={"tenant_id": [tenant_id]},  # Must be a list!
     )
 
     # Create client for backend
     client = await admin_client.create_client(
         client_id=f"{tenant_id}-backend",
         organization_id=org["id"],
-        redirect_uris=backend_redirect_uris
+        redirect_uris=backend_redirect_uris,
     )
 
     return {
         "organization": org,
         "client": client,
         "client_id": client["clientId"],
-        "client_secret": client["secret"]
+        "client_secret": client["secret"],
     }

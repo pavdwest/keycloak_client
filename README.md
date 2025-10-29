@@ -1,16 +1,8 @@
 # Overview
 
-This is a simple project that provides a Python Keycloak client for multi-tenant authentication and authorization.
+This is a simple project that provides an async Python Keycloak client focused on multi-tenant authentication and authorization.
 
 This was an interesting exercise in using multiple different AIs to generate code & tests and clean it up.
-
-# Python Keycloak Client
-
-A Python client for Keycloak with multi-tenant authentication and authorization support.
-
-## Overview
-
-This project provides a Python Keycloak client for multi-tenant authentication and authorization. It was developed as an exercise in using multiple different AIs to generate code & tests and clean it up.
 
 ## Features
 

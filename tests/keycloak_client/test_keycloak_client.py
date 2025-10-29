@@ -18,9 +18,7 @@ Run with: pytest tests/test_keycloak_client.py -v
 import time
 import pytest
 import jwt
-from datetime import datetime, timedelta
-from typing import Dict, Any
-from unittest.mock import AsyncMock, MagicMock, patch, Mock
+from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 
 from src.keycloak_client.keycloak_client import (

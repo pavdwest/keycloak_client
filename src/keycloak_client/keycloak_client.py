@@ -3,15 +3,12 @@ Keycloak Client for Multi-Tenant Litestar Infrastructure
 Supports OAuth2/OIDC authentication with Organizations feature
 """
 
-import asyncio
 import time
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
-from datetime import datetime, timedelta
 import httpx
 import jwt
 from jwt import PyJWKClient
-from functools import lru_cache
 
 
 @dataclass

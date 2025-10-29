@@ -125,9 +125,6 @@ app = Litestar(
 
 ### Complete Tenant Creation Example
 
-
-## Complete Tenant Setup Example
-
 Here's a complete example of setting up a new tenant with an organization, client, admin user, and regular user:
 
 ```python

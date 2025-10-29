@@ -1,0 +1,74 @@
+services:
+  keycloak-database-host:
+    image: postgres:alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${KEYCLOAK_DATABASE_NAME}
+      POSTGRES_USER: ${KEYCLOAK_DATABASE_HOST_USERNAME}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DATABASE_HOST_PASSWORD}
+    volumes:
+      - keycloak-database-host-data:/var/lib/postgresql/data
+    networks:
+      - keycloak_client_network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${KEYCLOAK_DATABASE_HOST_USERNAME} -d ${KEYCLOAK_DATABASE_NAME}",
+        ]
+      interval: 2s
+      timeout: 60s
+      retries: 20
+      start_period: 2s
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4.2
+    restart: unless-stopped
+    command: start-dev --features organization
+    # command: start-dev --features organization --import-realm
+    # command: start-dev --import-realm
+    # command: start-dev
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-database-host:5432/${KEYCLOAK_DATABASE_NAME}
+      KC_DB_USERNAME: ${KEYCLOAK_DATABASE_HOST_USERNAME}
+      KC_DB_PASSWORD: ${KEYCLOAK_DATABASE_HOST_PASSWORD}
+      KC_HOSTNAME_STRICT: false
+      KC_LOG_LEVEL: info
+      KC_METRICS_ENABLED: true
+      KC_HEALTH_ENABLED: true
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_BOOTSTRAP_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID}
+      KC_BOOTSTRAP_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET_KEY}
+    # ports:
+    #   - "8080:8080"
+    volumes:
+      - keycloak-data:/var/lib/postgresql/data
+      - ./services/keycloak/import:/opt/keycloak/data/import
+      - ./services/keycloak/export:/opt/keycloak/data/export
+      - ./services/keycloak/scripts:/opt/keycloak/data/scripts
+    networks:
+      - keycloak_client_network
+    # healthcheck:
+    #   test:
+    #     [
+    #       "CMD-SHELL",
+    #       "curl -f http://localhost:8080/realms/master",
+    #     ]
+    #   interval: 2s
+    #   timeout: 60s
+    #   retries: 50
+    #   start_period: 2s
+    depends_on:
+      keycloak-database-host:
+        condition: service_healthy
+networks:
+  keycloak_client_network:
+    driver: bridge
+
+volumes:
+  keycloak-database-host-data:
+    driver: local
+  keycloak-data:
+    driver: local
